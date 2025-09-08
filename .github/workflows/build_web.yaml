@@ -13,11 +13,16 @@ on:
         required: false
         default: "develop"
 
+  # Run daily at 2 AM UTC to check for any missed commits
+  schedule:
+    - cron: "0 2 * * *"
+
 env:
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   SOURCE_REPO: "dungngminh/mood_nail_build"
+  BASE_URL: ${{ secrets.BASE_URL }}
 
 jobs:
   build-and-deploy:
@@ -38,18 +43,25 @@ jobs:
           channel: stable
           flutter-version: 3.35.3
 
+      - name: Setup env
+        run: echo "API_BASE_URL=${{ env.BASE_URL }}" > .env.dev
+
       - name: Install dependencies
         run: flutter pub get
 
       - name: Run build_runner (if needed)
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
-        continue-on-error: true
 
       - name: Build Flutter web
         run: flutter build web --release
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
+
+      - name: Copy build files to root (for scheduled builds)
+        if: github.event_name == 'schedule'
+        run: |
+          cp -r source-code/build/web ./build-output
 
       - name: Pull Vercel environment for production
         run: vercel pull --yes --environment=production --token=${{ env.VERCEL_TOKEN }}
@@ -60,18 +72,36 @@ jobs:
       - name: Deploy to Vercel
         run: vercel deploy --prebuilt --prod --token=${{ env.VERCEL_TOKEN }}
 
+      - name: Update last processed commit
+        if: github.event_name == 'schedule' && success()
+        run: |
+          echo "${{ needs.check-for-changes.outputs.latest_sha }}" > last_commit.txt
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add last_commit.txt
+          git commit -m "Update last processed commit: ${{ needs.check-for-changes.outputs.latest_sha }}" || exit 0
+          git push
+
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: build-artifacts
-          path: build/web
+          path: ${{ github.event_name == 'schedule' && 'source-code/build/web' || 'build/web' }}
 
       - name: Notify deployment status
         if: always()
         run: |
           if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ Deployment successful!"
+            if [ "${{ github.event_name }}" == "schedule" ]; then
+              echo "✅ Scheduled deployment successful for commit: ${{ needs.check-for-changes.outputs.latest_sha }}"
+            else
+              echo "✅ Deployment successful!"
+            fi
           else
-            echo "❌ Deployment failed!"
+            if [ "${{ github.event_name }}" == "schedule" ]; then
+              echo "❌ Scheduled deployment failed for commit: ${{ needs.check-for-changes.outputs.latest_sha }}"
+            else
+              echo "❌ Deployment failed!"
+            fi
           fi

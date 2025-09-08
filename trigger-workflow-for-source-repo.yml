@@ -1,0 +1,26 @@
+name: Trigger Build Tool Deployment
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  trigger-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deployment workflow in build tool repo
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DEPLOY_TOKEN }}
+          repository: dungngminh/moon_nail_build_tool
+          event-type: develop-push
+          client-payload: |
+            {
+              "ref": "${{ github.ref }}",
+              "sha": "${{ github.sha }}",
+              "repository": "${{ github.repository }}",
+              "pusher": "${{ github.event.pusher.name }}"
+            }
+
+
