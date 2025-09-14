@@ -58,11 +58,6 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Copy build files to root (for scheduled builds)
-        if: github.event_name == 'schedule'
-        run: |
-          cp -r source-code/build/web ./build-output
-
       - name: Pull Vercel environment for production
         run: vercel pull --yes --environment=production --token=${{ env.VERCEL_TOKEN }}
 
