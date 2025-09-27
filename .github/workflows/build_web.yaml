@@ -49,6 +49,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Clean build runner
+        run: flutter pub run build_runner clean
+
+      - name: Install Intl Utils
+        run: dart pub global activate intl_utils
+
+      - name: Generate l10n
+        run: dart run intl_utils:generate
+
       - name: Run build_runner (if needed)
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
 
