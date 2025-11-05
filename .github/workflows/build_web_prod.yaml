@@ -1,4 +1,4 @@
-name: Deploy Flutter Web to Vercel
+name: Deploy Flutter Web to Vercel Production
 
 on:
   # Trigger workflow when external repository pushes to develop branch
@@ -19,10 +19,10 @@ on:
 
 env:
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PROD }}
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   SOURCE_REPO: "dungngminh/mood_nail_build"
-  BASE_URL: ${{ secrets.BASE_URL }}
+  BASE_URL: ${{ secrets.BASE_URL_PROD }}
 
 jobs:
   build-and-deploy:
@@ -44,7 +44,7 @@ jobs:
           flutter-version: 3.35.3
 
       - name: Setup env
-        run: echo "API_BASE_URL=${{ env.BASE_URL }}" > .env.dev
+        run: echo "API_BASE_URL=${{ env.BASE_URL }}" > .env.prod
 
       - name: Install dependencies
         run: flutter pub get
@@ -62,7 +62,7 @@ jobs:
         run: flutter packages pub run build_runner build --delete-conflicting-outputs
 
       - name: Build Flutter web
-        run: flutter build web --release --target lib/main_application.dart
+        run: flutter build web --release --target lib/main_production.dart
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest

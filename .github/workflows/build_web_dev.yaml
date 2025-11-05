@@ -1,0 +1,101 @@
+name: Deploy Flutter Web to Vercel Dev
+
+on:
+  # Trigger workflow when external repository pushes to develop branch
+  repository_dispatch:
+    types: [develop-push]
+
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build (branch, tag, or commit SHA)"
+        required: false
+        default: "develop"
+
+  # Run daily at 2 AM UTC to check for any missed commits
+  schedule:
+    - cron: "0 2 * * *"
+
+env:
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  SOURCE_REPO: "dungngminh/mood_nail_build"
+  BASE_URL: ${{ secrets.BASE_URL }}
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy to Vercel
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout external repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SOURCE_REPO }}
+          ref: ${{ github.event.client_payload.ref || github.event.inputs.ref || 'develop' }}
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.35.3
+
+      - name: Setup env
+        run: echo "API_BASE_URL=${{ env.BASE_URL }}" > .env.dev
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Clean build runner
+        run: flutter pub run build_runner clean
+
+      - name: Install Intl Utils
+        run: dart pub global activate intl_utils
+
+      - name: Generate l10n
+        run: dart run intl_utils:generate
+
+      - name: Run build_runner (if needed)
+        run: flutter packages pub run build_runner build --delete-conflicting-outputs
+
+      - name: Build Flutter web
+        run: flutter build web --release --target lib/main_development.dart
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel environment for production
+        run: vercel pull --yes --environment=production --token=${{ env.VERCEL_TOKEN }}
+
+      - name: Build project with Vercel CLI for production
+        run: vercel build --token=${{ env.VERCEL_TOKEN }} --target production
+
+      - name: Deploy to Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ env.VERCEL_TOKEN }}
+
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-artifacts
+          path: ${{ github.event_name == 'schedule' && 'source-code/build/web' || 'build/web' }}
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            if [ "${{ github.event_name }}" == "schedule" ]; then
+              echo "✅ Scheduled deployment successful for commit: ${{ needs.check-for-changes.outputs.latest_sha }}"
+            else
+              echo "✅ Deployment successful!"
+            fi
+          else
+            if [ "${{ github.event_name }}" == "schedule" ]; then
+              echo "❌ Scheduled deployment failed for commit: ${{ needs.check-for-changes.outputs.latest_sha }}"
+            else
+              echo "❌ Deployment failed!"
+            fi
+          fi
