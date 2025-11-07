@@ -82,6 +82,13 @@ jobs:
         with:
           name: build-artifacts
           path: ${{ github.event_name == 'schedule' && 'source-code/build/web' || 'build/web' }}
+      
+      - name: Notify to Discord
+        uses: sarisia/actions-status-discord@v1
+        if: always()
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ job.status }}
 
       - name: Notify deployment status
         if: always()
