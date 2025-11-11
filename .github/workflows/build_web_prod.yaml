@@ -64,6 +64,26 @@ jobs:
       - name: Build Flutter web
         run: flutter build web --release --target lib/main_production.dart
 
+      - name: Configure Git
+        run: |
+          git config --global user.name "dungngminh"
+          git config --global user.email "ngminhdung1311@gmail.com"
+
+      - name: Create a temp file
+        run: |
+          echo "Temporary file for Vercel deployment" > temp.txt
+
+      - name: Get last commit message
+        id: get-commit-message
+        run: |
+          LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo "LAST_COMMIT_MESSAGE=$LAST_COMMIT_MESSAGE" >> $GITHUB_ENV
+      
+      - name: Create temporary commit for Vercel, get last commit message
+        run: |
+          git add .
+          git commit -m "Temp commit: $LAST_COMMIT_MESSAGE"
+
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 

@@ -72,13 +72,17 @@ jobs:
       - name: Create a temp file
         run: |
           echo "Temporary file for Vercel deployment" > temp.txt
+
+      - name: Get last commit message
+        id: get-commit-message
+        run: |
+          LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo "LAST_COMMIT_MESSAGE=$LAST_COMMIT_MESSAGE" >> $GITHUB_ENV
       
-      - name: Create temporary commit for Vercel
+      - name: Create temporary commit for Vercel, get last commit message
         run: |
           git add .
-          git commit -m "Temporary commit for Vercel deployment" || echo "No changes to commit"
-        
-      
+          git commit -m "Temp commit: $LAST_COMMIT_MESSAGE"
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
