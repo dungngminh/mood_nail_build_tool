@@ -64,6 +64,22 @@ jobs:
       - name: Build Flutter web
         run: flutter build web --release --target lib/main_development.dart
 
+      - name: Configure Git
+        run: |
+          git config --global user.name "dungngminh"
+          git config --global user.email "ngminhdung1311@gmail.com"
+
+      - name: Create a temp file
+        run: |
+          echo "Temporary file for Vercel deployment" > temp.txt
+      
+      - name: Create temporary commit for Vercel
+        run: |
+          git add .
+          git commit -m "Temporary commit for Vercel deployment" || echo "No changes to commit"
+        
+      
+
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
