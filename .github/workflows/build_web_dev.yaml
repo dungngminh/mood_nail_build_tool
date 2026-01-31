@@ -108,6 +108,8 @@ jobs:
         if: always()
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          description: "$LAST_COMMIT_MESSAGE"
+          url: "https://dashboard.dev.moodnaillounge.us"
           status: ${{ job.status }}
 
       - name: Notify deployment status
